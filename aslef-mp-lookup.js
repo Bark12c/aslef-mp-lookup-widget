@@ -1,3 +1,75 @@
+;(function(window, document) {
+  document.addEventListener('DOMContentLoaded', function() {
+    // find our placeholder
+    var container = document.getElementById('aslef-mp-lookup-widget');
+    if (!container) return;
+
+    // inject the HTML + CSS
+    container.innerHTML = `
+      <style>
+        #aslef-mp-lookup-widget { font-family: sans-serif; max-width: 400px; }
+        #aslef-mp-lookup-widget input,
+        #aslef-mp-lookup-widget button {
+          width: 100%; padding: 0.5em; margin: 0.25em 0; box-sizing: border-box;
+        }
+        #aslef-mp-lookup-widget .result p {
+          margin: 0.5em 0; font-size: 0.9em;
+        }
+      </style>
+      <input id="aslef-postcode" type="text" placeholder="Enter postcode" />
+      <button id="aslef-find-btn">Find MP</button>
+      <div class="result"></div>
+    `;
+
+    // pull in the data you already have declared below
+    var mpList = window.aslefMpList;
+
+    // lookup + build mailto
+    async function lookup() {
+      var pc = container.querySelector('#aslef-postcode').value.trim();
+      var out = container.querySelector('.result');
+      if (!pc) {
+        out.textContent = 'Please enter a postcode';
+        return;
+      }
+      out.textContent = 'Looking up…';
+      try {
+        var resp = await fetch(
+          'https://api.postcodes.io/postcodes/' + encodeURIComponent(pc)
+        );
+        var json = await resp.json();
+        var con = json.result && json.result.parliamentary_constituency;
+        if (!con || !mpList[con]) {
+          out.textContent = con
+            ? 'No MP data for ' + con
+            : 'No constituency found';
+          return;
+        }
+        var mp = mpList[con];
+        var lines = [
+          `Dear ${mp.name},`, '',
+          `I am writing to you regarding the ASLEF train driver’s union ‘Rail Freight Future’ campaign…`,
+          // (etc – keep your full email lines here)
+          `Yours sincerely,`
+        ];
+        var body = encodeURIComponent(lines.join('\r\n'));
+        var subject = encodeURIComponent('ASLEF Rail Freight Future Campaign');
+        var mailto = `mailto:${mp.email}?subject=${subject}&body=${body}`;
+        out.innerHTML = `
+          <p><strong>${con}</strong></p>
+          <p>${mp.name} (${mp.party})</p>
+          <p><a href="${mailto}">Email your MP</a></p>
+        `;
+      } catch (err) {
+        console.error(err);
+        out.textContent = 'Error—please try again later';
+      }
+    }
+
+    // wire up the button
+    container.querySelector('#aslef-find-btn').addEventListener('click', lookup);
+  });
+})(window, document);
 window.aslefMpList = {
  "Ipswich": {
     "name": "Jack Abbott",
