@@ -1,3 +1,65 @@
+;(function(window, document){
+  document.addEventListener('DOMContentLoaded', function(){
+    const container = document.getElementById('aslef-mp-lookup-widget');
+    if (!container) return;
+    // inject UI
+    container.innerHTML = `
+      <style>
+        #aslef-mp-lookup-widget { font-family: sans-serif; max-width:400px; }
+        #aslef-mp-lookup-widget input,
+        #aslef-mp-lookup-widget button {
+          width:100%; padding:.5em; margin:.25em 0; box-sizing:border-box;
+        }
+        #aslef-mp-lookup-widget .result p {
+          margin:.5em 0; font-size:.9em;
+        }
+      </style>
+      <input id="aslef-postcode" type="text" placeholder="Enter postcode" />
+      <button id="aslef-find-btn">Find MP</button>
+      <div class="result"></div>
+    `;
+    // grab the data you define below
+    const mpList = window.aslefMpList;
+    // lookup + build mailto
+    async function lookup() {
+      const pc = container.querySelector('#aslef-postcode').value.trim();
+      const out = container.querySelector('.result');
+      if (!pc)      return out.textContent = 'Please enter a postcode';
+      out.textContent = 'Looking up…';
+      try {
+        const resp = await fetch(
+          'https://api.postcodes.io/postcodes/'+encodeURIComponent(pc)
+        );
+        const js  = await resp.json();
+        const con = js.result && js.result.parliamentary_constituency;
+        if (!con || !mpList[con]) {
+          return out.textContent = con
+            ? 'No MP data for '+con
+            : 'No constituency found';
+        }
+        const mp = mpList[con];
+        const lines = [
+          `Dear ${mp.name},`, ``,
+          `I am writing to you regarding the ASLEF train driver’s union…`,
+          /* …your full email copy here… */,
+          `Yours sincerely,`
+        ];
+        const body    = encodeURIComponent(lines.join('\r\n'));
+        const subject = encodeURIComponent('ASLEF Rail Freight Future Campaign');
+        const href    = `mailto:${mp.email}?subject=${subject}&body=${body}`;
+        out.innerHTML = `
+          <p><strong>${con}</strong></p>
+          <p>${mp.name} (${mp.party})</p>
+          <p><a href="${href}">Email your MP</a></p>
+        `;
+      } catch (e) {
+        console.error(e);
+        out.textContent = 'Error—please try again later';
+      }
+    }
+    container.querySelector('#aslef-find-btn').addEventListener('click', lookup);
+  });
+})(window, document);
 ;(function(window, document) {
   document.addEventListener('DOMContentLoaded', function() {
     // find our placeholder
